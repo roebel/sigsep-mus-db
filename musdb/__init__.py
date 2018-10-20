@@ -3,7 +3,11 @@ from .audio_classes import Track, Source, Target
 from os import path as op
 from six.moves import map
 import multiprocessing
-import soundfile as sf
+try:
+    import pysndfile.sndio as sndio
+except ImportError:
+    import soundfile as sf
+    
 import collections
 import numpy as np
 import functools
@@ -39,6 +43,7 @@ class DB(object):
     download : boolean, optional
         download sample version of MUSDB18 which includes 7s excerpts,
         defaults to `False`
+    
 
     Attributes
     ----------
@@ -73,7 +78,7 @@ class DB(object):
         root_dir=None,
         setup_file=None,
         is_wav=False,
-        download=False
+        download=False,
     ):
         if root_dir is None:
             if download:
@@ -110,6 +115,8 @@ class DB(object):
     def load_mus_tracks(self, subsets=None, tracknames=None):
         """Parses the musdb folder structure, returns list of `Track` objects
 
+        this patched version searches appropriate tracks by means of matching file names
+
         Parameters
         ==========
         subsets : list[str], optional
@@ -138,40 +145,34 @@ class DB(object):
 
             subset_folder = op.join(self.root_dir, subset)
 
-            for _, folders, files in os.walk(subset_folder):
+            for folder, subdirs, files in os.walk(subset_folder):
+                # ensure sorted order of tracks
+                subdirs.sort()
+                # check whether we are in a track folder
                 if self.is_wav:
-                    # parse pcm tracks
-                    for track_name in sorted(folders):
-                        if (
-                            tracknames is not None
-                        ) and (
-                            track_name not in tracknames
-                        ):
+                    if False:
+                        print(os.path.join(folder,self.setup['sources']["vocals"]), "->", 
+                            os.path.exists(os.path.join(folder,self.setup['sources']["vocals"])))
+                    if self.setup['sources']["vocals"] in files :
+                        # parse pcm tracks
+                        track_name = os.path.basename(folder)
+                        if ( tracknames is not None) and (track_name not in tracknames ):
                             continue
 
-                        track_folder = op.join(subset_folder, track_name)
+                        track_folder = folder
                         # create new mus track
-                        track = Track(
-                            name=track_name,
-                            path=op.join(
-                                track_folder,
-                                self.setup['mixture']
-                            ),
-                            subset=subset,
-                            stem_id=self.setup['stem_ids']['mixture'],
-                            is_wav=self.is_wav
-                        )
+                        track = Track(name=track_name,
+                                      path=op.join( track_folder,
+                                                    self.setup['mixture']),
+                                      subset=subset,
+                                      stem_id=self.setup['stem_ids']['mixture'],
+                                      is_wav=self.is_wav)
 
                         # add sources to track
                         sources = {}
-                        for src, source_file in list(
-                            self.setup['sources'].items()
-                        ):
+                        for src, source_file in list( self.setup['sources'].items()):
                             # create source object
-                            abs_path = op.join(
-                                track_folder,
-                                source_file
-                            )
+                            abs_path = op.join( track_folder, source_file )
                             if os.path.exists(abs_path):
                                 sources[src] = Source(
                                     name=src,
@@ -183,9 +184,7 @@ class DB(object):
 
                         # add targets to track
                         targets = collections.OrderedDict()
-                        for name, target_srcs in list(
-                            self.setup['targets'].items()
-                        ):
+                        for name, target_srcs in list( self.setup['targets'].items()):
                             # add a list of target sources
                             target_sources = []
                             for source, gain in list(target_srcs.items()):
@@ -203,18 +202,17 @@ class DB(object):
                         # add track to list of tracks
                         tracks.append(track)
                 else:
-                    # parse stem files
                     for track_name in sorted(files):
                         if 'stem' in track_name and track_name.endswith(
-                            '.mp4'
-                        ):
+                                '.mp4'
+                            ):
                             if (
                                 tracknames is not None
-                            ) and (
-                                track_name.split('.stem.mp4')[0] not in
-                                tracknames
-                            ):
-                                continue
+                                ) and (
+                                    track_name.split('.stem.mp4')[0] not in
+                                    tracknames
+                                ):
+                                    continue
 
                             # create new mus track
                             track = Track(
@@ -287,7 +285,10 @@ class DB(object):
         # write out tracks to disk
         for target, estimate in list(user_estimates.items()):
             target_path = op.join(track_estimate_dir, target + '.wav')
-            sf.write(target_path, estimate, track.rate)
+            try:
+                sndio.write(target_path, estimate, track.rate, format="wav", enc="pcm16")
+            except NameError:
+                sf.write(target_path, estimate, track.rate)
         pass
 
     def test(self, user_function):

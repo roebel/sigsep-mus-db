@@ -6,10 +6,10 @@ if __name__ == "__main__":
         name='musdb',
 
         # Version
-        version="0.3.0",
+        version="0.3.1",
 
         # Description
-        description='Python parser for the SIGSEP MUS database',
+        description='Python parser for the SIGSEP MUS database - patched for augmented musdb by A. Roebel',
         url='https://github.com/sigsep/sigsep-mus-db',
 
         # Your contact information
@@ -31,10 +31,8 @@ if __name__ == "__main__":
             'six',
             'tqdm',
             'pyaml',
-            'soundfile>=0.9.0',
             'stempeg>=0.1.1',
             'Pillow',
-            'sklearn',
         ],
 
         package_data={

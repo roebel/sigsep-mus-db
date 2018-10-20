@@ -1,7 +1,7 @@
 from __future__ import print_function
 from __future__ import division
 import os
-import soundfile as sf
+import pysndfile.sndio as sndio
 import numpy as np
 import stempeg
 
@@ -47,7 +47,9 @@ class Source(object):
                         filename=self.path, stem_id=self.stem_id
                     )
                 else:
-                    audio, rate = sf.read(self.path, always_2d=True)
+                    audio, rate, _ = sndio.read(self.path)
+                    if audio.ndim == 1:
+                        audio =audio[:,np.newaxis]
                 self._rate = rate
                 return audio
             else:
@@ -68,7 +70,7 @@ class Source(object):
                         filename=self.path, stem_id=self.stem_id
                     )
                 else:
-                    audio, rate = sf.read(self.path, always_2d=True)
+                    rate,_,_ = sndio.get_info(self.path)
                 self._rate = rate
                 return rate
             else:
@@ -224,7 +226,10 @@ class Track(object):
                         stem_id=self.stem_id
                     )
                 else:
-                    audio, rate = sf.read(self.path, always_2d=True)
+                    audio, rate, _ = sndio.read(self.path)
+                    if audio.ndim == 1:
+                        audio =audio[:,np.newaxis]
+                    
                 self._rate = rate
                 return audio
             else:
@@ -245,7 +250,7 @@ class Track(object):
                         filename=self.path, stem_id=self.stem_id
                     )
                 else:
-                    audio, rate = sf.read(self.path, always_2d=True)
+                    rate, _, _ = sndio.get_info(self.path)
                 self._rate = rate
                 return rate
             else:
